@@ -598,6 +598,8 @@ function frame() {
   if (!paused) step(dt, rdt);
   pressed.clear(); wheel = 0;
   updateCamera(rdt, aiming || (S.rune && ['magnet', 'stasis', 'ice'].includes(S.rune) && down('runeAim')));
+  const ov = window.__camOverride;      // tests: look from a fixed spot, e.g. straight down over the campus
+  if (ov) { camera.position.set(...ov.p); camera.up.set(0, 0, -1); camera.lookAt(...ov.l); camera.up.set(0, 1, 0); if (ov.fov && camera.fov !== ov.fov) { camera.fov = ov.fov; camera.updateProjectionMatrix(); } }
   // the hero's pose
   const dbgA = window.__atkPose;      // tests: freeze a swing at some point { p, kind, combo }
   const sp = Math.hypot(B.vx, B.vz), hold = atkT >= 0 || blocking || dbgA ? 'weapon' : aiming ? 'bow' : null;
@@ -610,6 +612,7 @@ function frame() {
   // the world's look
   const rainy = S.rain && !inShrine && regionAt(B.x, B.z) !== 'desert';
   gfx.setTime(inShrine ? 12 : S.time, rainy, new THREE.Vector3(B.x, B.y, B.z));
+  if (ov) { gfx.scene.fog.near = 1e5; gfx.scene.fog.far = 2e5; }
   gfx.updateGrass(B.x, B.z, !inShrine && quality >= 1);
   if (!inShrine && L !== outdoor) L = outdoor; outdoor.rain = rainy;
   gfx.frame(rdt, new THREE.Vector3(B.x, B.y, B.z));

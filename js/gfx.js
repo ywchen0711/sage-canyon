@@ -8,7 +8,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { W, HGRID, groundH, colorAt, normalAt, TREES, ROCKS, POI, CASTLE, VILLAGE, SPOT, regionAt, snowLine, roadDist, BOXES, MESA, BUILDINGS, SHELTER, PLAY, COURTS, GOALS, ZONES, paved, px } from './world.js';
+import { W, HGRID, groundH, colorAt, normalAt, TREES, ROCKS, POI, CASTLE, VILLAGE, SPOT, regionAt, snowLine, roadDist, BOXES, MESA, BUILDINGS, ANGLED_W, SHELTER, CANOPIES, PLAY, COURTS, GOALS, ZONES, AMPHI, ISLANDS, COURT_PATHS, paved, px } from './world.js';
 import { toon, glowMat, outline, makeNPC, weaponMesh } from './models.js';
 import { hash2 } from './noise.js';
 
@@ -292,51 +292,84 @@ export function createGfx(canvas) {
 
   // ---------------------------------------------------------------- the school: buildings, the lunch shelter, play structures, courts and lines
   function campus() {
-    const Y = MESA, stucco = toon('#ecdfc6'), base = toon('#b89a7a'), roofFlat = toon('#dcdcd8'), tile = toon('#9a6a56'), glass = toon('#4e6e8e'), trim = toon('#6a8aa8');
-    const white = new THREE.MeshLambertMaterial({ color: '#f4f4ee' });
-    const line = (x0, z0, x1, z1, mat = white, w = 0.35) => { const L = Math.hypot(x1 - x0, z1 - z0), m = mesh(new THREE.BoxGeometry(w, 0.04, L), mat, (x0 + x1) / 2, Y + 0.03, (z0 + z1) / 2); m.rotation.y = Math.atan2(x1 - x0, z1 - z0); m.castShadow = false; return m; };
+    const Y = MESA, stucco = toon('#ecdfc6'), base = toon('#b89a7a'), roofFlat = toon('#dcdcd8'), roofDark = toon('#3a4258'), tile = toon('#9a6a56'), glass = toon('#4e6e8e'), trim = toon('#6a8aa8');
+    const white = new THREE.MeshLambertMaterial({ color: '#f4f4ee' }), conc = new THREE.MeshLambertMaterial({ color: '#c8c2b4' });
+    const flat = (geo, mat, x, y, z, ry = 0) => { const m = mesh(geo, mat, x, y, z); m.rotation.y = ry; m.castShadow = false; return m; };
+    const line = (x0, z0, x1, z1, mat = white, w = 0.35, y = Y + 0.03) => { const L = Math.hypot(x1 - x0, z1 - z0); return flat(new THREE.BoxGeometry(w, 0.04, L), mat, (x0 + x1) / 2, y, (z0 + z1) / 2, Math.atan2(x1 - x0, z1 - z0)); };
+    // a block of classrooms: stucco walls, a stone base, a band of windows on each floor, a roof
+    function block(cx, cz, w, d, h, roof, ry = 0, wallMat = stucco) {
+      const g = new THREE.Group(); g.position.set(cx, Y, cz); g.rotation.y = ry; world.add(g);
+      const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
+      add(new THREE.BoxGeometry(w, h + 2, d), wallMat, 0, h / 2 - 1, 0);
+      add(new THREE.BoxGeometry(w + 0.1, 1.2, d + 0.1), base, 0, 0.6, 0);
+      for (let fy = 2.4; fy < h - 1.5; fy += 6) { add(new THREE.BoxGeometry(w + 0.12, 1.6, d * 0.55), glass, 0, fy + 0.8, 0); add(new THREE.BoxGeometry(w * 0.55, 1.6, d + 0.12), glass, 0, fy + 0.8, 0); }
+      if (roof === 'tile') { const big = Math.max(w, d), rh = Math.min(5, big * 0.15), r = add(new THREE.ConeGeometry(big * 0.72, rh, 4), tile, 0, h + rh / 2, 0); r.rotation.y = Math.PI / 4; r.scale.set((w / big) * 1.06, 1, (d / big) * 1.06); }
+      else { add(new THREE.BoxGeometry(w + 0.8, 0.6, d + 0.8), roofFlat, 0, h + 0.3, 0); for (let i = 0; i < Math.max(1, Math.floor(w / 22)); i++) add(new THREE.BoxGeometry(3, 1.6, 2.4), toon('#b8b8b4'), -w / 2 + 11 + i * 22, h + 1.4, 0); }
+      return g;
+    }
     for (const [nm, r, h, roof] of BUILDINGS) {
       const [x0, z0, x1, z1] = r, w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-      mesh(new THREE.BoxGeometry(w, h + 2, d), nm.startsWith('portable') ? toon('#d8d4c4') : stucco, cx, Y + h / 2 - 1, cz);
-      mesh(new THREE.BoxGeometry(w + 0.1, 1.2, d + 0.1), base, cx, Y + 0.6, cz);
-      // window bands on every floor, all the way round
-      for (let fy = 2.4; fy < h - 1.5; fy += 6) { mesh(new THREE.BoxGeometry(w + 0.12, 1.6, d * 0.6), glass, cx, Y + fy + 0.8, cz); mesh(new THREE.BoxGeometry(w * 0.6, 1.6, d + 0.12), glass, cx, Y + fy + 0.8, cz); }
-      if (roof === 'flat') { mesh(new THREE.BoxGeometry(w + 0.8, 0.6, d + 0.8), roofFlat, cx, Y + h + 0.3, cz); for (let i = 0; i < Math.max(1, Math.floor(w / 25)); i++) mesh(new THREE.BoxGeometry(3, 1.6, 2.4), toon('#b8b8b4'), x0 + 12 + i * 25, Y + h + 1.4, cz); }
-      else { const big = Math.max(w, d), rh = Math.min(4, big * 0.15), rr = mesh(new THREE.ConeGeometry(big * 0.72, rh, 4), tile, cx, Y + h + rh / 2, cz); rr.rotation.y = Math.PI / 4; rr.scale.set(w / big * 1.06, 1, d / big * 1.06); }
-      // a covered walkway along one long side, on blue posts
-      if (!nm.startsWith('portable') && w > 30) { mesh(new THREE.BoxGeometry(w, 0.4, 3.2), roofFlat, cx, Y + 4.2, z1 + 1.6); for (let x = x0 + 2; x < x1; x += 8) mesh(new THREE.CylinderGeometry(0.15, 0.15, 4, 6), trim, x, Y + 2, z1 + 3); }
+      block(cx, cz, w, d, h, roof, 0, nm === 'portable' || nm === 'southeast' ? toon('#d8d4c4') : stucco);
+      if (nm === 'north') {                // the long dark canopy along the field side, and the brown tile trim of the upper story
+        mesh(new THREE.BoxGeometry(w, 0.5, 11), roofDark, cx, Y + 5, z0 - 1); for (let x = x0 + 3; x < x1; x += 9) mesh(new THREE.CylinderGeometry(0.18, 0.18, 5, 6), trim, x, Y + 2.5, z0 - 6);
+        for (const zz of [z0 + 4, z1 - 4]) mesh(new THREE.BoxGeometry(w - 6, 1.2, 4), tile, cx, Y + h + 0.9, zz);
+      }
+      if (nm === 'westwing' || nm === 'eastwing') {   // covered walks with lockers along the courtyard side
+        const xs = nm === 'westwing' ? x1 + 1.6 : x0 - 1.6; mesh(new THREE.BoxGeometry(3.2, 0.4, d), roofFlat, xs, Y + 4, cz); for (let z = z0 + 3; z < z1; z += 9) mesh(new THREE.CylinderGeometry(0.15, 0.15, 4, 6), trim, xs + (nm === 'westwing' ? 1.4 : -1.4), Y + 2, z);
+      }
     }
-    // the lunch shelter
-    { const [x0, z0, x1, z1] = SHELTER, top = Y + 6; mesh(new THREE.BoxGeometry(x1 - x0, 0.5, z1 - z0), toon('#8aa0ac'), (x0 + x1) / 2, top + 0.25, (z0 + z1) / 2); for (let x = x0 + 4; x < x1; x += 6) mesh(new THREE.BoxGeometry(0.4, 0.3, z1 - z0), toon('#6a808c'), x, top + 0.6, (z0 + z1) / 2);
+    for (const r of ANGLED_W) { const g = block(r.x, r.z, r.hl * 2, r.hw * 2, r.h, r.roof, -r.ang, r.nm === 'hallroof' ? toon('#e4d4b8') : stucco); if (r.nm === 'hallroof') g.children[0].material = toon('#d8c8a8'); }
+    // the lunch shelter: two long metal roofs on blue posts, tables underneath
+    { const [x0, z0, x1, z1] = SHELTER, top = Y + 6, xm = (x0 + x1) / 2;
+      for (const [a, b] of [[x0, xm], [xm, x1]]) { const r = mesh(new THREE.BoxGeometry(b - a - 0.4, 0.4, z1 - z0), toon('#9ab0bc'), (a + b) / 2, top + 0.2, (z0 + z1) / 2); for (let x = a + 2; x < b; x += 3) mesh(new THREE.BoxGeometry(0.2, 0.15, z1 - z0), toon('#7a909c'), x, top + 0.45, (z0 + z1) / 2); void r; }
       for (let x = x0 + 1; x < x1; x += (x1 - x0 - 2) / 3) for (const z of [z0 + 1, z1 - 1, (z0 + z1) / 2]) mesh(new THREE.CylinderGeometry(0.3, 0.3, 6, 8), trim, x, Y + 3, z);
-      for (let i = 0; i < 6; i++) { const z = z0 + 6 + i * ((z1 - z0 - 12) / 5); mesh(new THREE.BoxGeometry((x1 - x0) * 0.6, 0.15, 1.6), toon('#4a6a8a'), (x0 + x1) / 2, Y + 1.1, z); mesh(new THREE.BoxGeometry((x1 - x0) * 0.6, 0.12, 0.5), toon('#4a6a8a'), (x0 + x1) / 2, Y + 0.6, z + 1.3); } }
-    // play structures: decks, posts, a canopy, a yellow slide
+      for (let i = 0; i < 8; i++) { const z = z0 + 6 + i * ((z1 - z0 - 12) / 7); for (const xx of [(x0 + xm) / 2, (xm + x1) / 2]) { mesh(new THREE.BoxGeometry(14, 0.15, 1.6), toon('#4a6a8a'), xx, Y + 1.1, z); mesh(new THREE.BoxGeometry(14, 0.12, 0.5), toon('#4a6a8a'), xx, Y + 0.6, z + 1.3); } } }
+    // the covered walk across the south of the courtyard, the pyramid canopy over the lunch tables
+    for (const [x0, z0, x1, z1, top, kind] of CANOPIES) {
+      const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+      if (kind === 'pyramid') { const c = mesh(new THREE.ConeGeometry((x1 - x0) * 0.75, 4, 4), toon('#7a96c0'), cx, Y + top + 2, cz); c.rotation.y = Math.PI / 4; for (const [a, b] of [[x0 + 1, z0 + 1], [x1 - 1, z0 + 1], [x0 + 1, z1 - 1], [x1 - 1, z1 - 1]]) mesh(new THREE.CylinderGeometry(0.25, 0.25, top, 8), trim, a, Y + top / 2, b);
+        for (let i = 0; i < 9; i++) mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.12, 12), toon('#4a6a8a'), x0 - 8 + (i % 3) * 10, Y + 1.0, z0 - 6 + Math.floor(i / 3) * 9); }
+      else { mesh(new THREE.BoxGeometry(x1 - x0, 0.4, z1 - z0), roofDark, cx, Y + top + 0.2, cz); for (const x of [x0 + 2, x1 - 2, cx]) mesh(new THREE.CylinderGeometry(0.2, 0.2, top, 6), trim, x, Y + top / 2, cz); }
+    }
+    // the courtyard: paths in an X and a cross, a planted bed in the middle
+    for (const [[ax, az], [bx, bz]] of COURT_PATHS) line(ax, az, bx, bz, conc, 4.5, Y + 0.035);
+    { const [cx, cz] = px(443, 368); flat(new THREE.BoxGeometry(30, 0.3, 14), toon('#a8583a'), cx, Y + 0.15, cz); const [mx, mz] = px(443, 404); flat(new THREE.BoxGeometry(8, 0.5, 8), conc, mx, Y + 0.25, mz); }
+    // play structures: decks, posts, canopies, a yellow slide, on wood chips
     for (const p of PLAY) {
       const blue = toon('#3a7ad8'), red = toon('#e04a3a'), yellow = toon('#f0c040');
       for (const [x, z, h, sz] of p.decks) {
         mesh(new THREE.BoxGeometry(sz * 2, 0.3, sz * 2), toon('#5a5a62'), x, Y + h - 0.15, z);
         for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) mesh(new THREE.CylinderGeometry(0.16, 0.16, h + 2.4, 8), blue, x + a * sz, Y + (h + 2.4) / 2, z + b * sz);
         const c = mesh(new THREE.ConeGeometry(sz * 1.6, 1.8, 4), h > 4 ? red : blue, x, Y + h + 3.3, z); c.rotation.y = Math.PI / 4;
-        for (const b of [-1, 1]) mesh(new THREE.BoxGeometry(sz * 2, 0.9, 0.08), toon('#f0c040'), x, Y + h + 0.6, z + b * sz);
+        for (const b of [-1, 1]) mesh(new THREE.BoxGeometry(sz * 2, 0.9, 0.08), yellow, x, Y + h + 0.6, z + b * sz);
       }
       const [x, z, h, sz] = p.decks[1], sl = mesh(new THREE.BoxGeometry(1.4, 0.25, h * 1.9), yellow, x + sz + 0.8, Y + h / 2, z + h * 0.7); sl.rotation.x = -0.5;
-      const ground = mesh(new THREE.CylinderGeometry(p.big ? 14 : 10, p.big ? 14 : 10, 0.06, 28), toon('#8a6a4a'), p.x, Y + 0.03, p.z); ground.castShadow = false;       // wood chips
+      flat(new THREE.CylinderGeometry(p.big ? 22 : 16, p.big ? 22 : 16, 0.06, 32), toon('#7aa0c8'), p.x, Y + 0.03, p.z);      // the blue rubber surface round each structure
     }
-    // the basketball court with its hoops, four square, tetherball, hopscotch
-    { const [cx, cz] = COURTS.basket, W2 = 30, D2 = 18; line(cx - W2, cz - D2, cx + W2, cz - D2); line(cx - W2, cz + D2, cx + W2, cz + D2); line(cx - W2, cz - D2, cx - W2, cz + D2); line(cx + W2, cz - D2, cx + W2, cz + D2); line(cx, cz - D2, cx, cz + D2);
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(4, 0.12, 6, 36), white); ring.rotation.x = Math.PI / 2; ring.position.set(cx, Y + 0.04, cz); world.add(ring);
-      for (const s of [-1, 1]) { const hx = cx + s * (W2 - 1.5); mesh(new THREE.CylinderGeometry(0.2, 0.2, 7, 8), toon('#5a5a62'), hx + s * 1.2, Y + 3.5, cz); mesh(new THREE.BoxGeometry(0.15, 2.4, 3.6), white, hx, Y + 6.4, cz); const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.06, 6, 16), toon('#ff7a2a')); hoop.rotation.x = Math.PI / 2; hoop.position.set(hx - s * 0.7, Y + 5.6, cz); world.add(hoop); } }
-    { const [cx, cz] = COURTS.four, cols = ['#e04a3a', '#3a7ad8', '#f0c040', '#3ab060']; for (let i = 0; i < 4; i++) { const m = mesh(new THREE.BoxGeometry(3.6, 0.04, 3.6), toon(cols[i]), cx + (i % 2 ? 1.9 : -1.9), Y + 0.03, cz + (i < 2 ? -1.9 : 1.9)); m.castShadow = false; }
-      for (let i = 0; i < 8; i++) { const m = mesh(new THREE.BoxGeometry(1.4, 0.04, 1.4), toon(cols[i % 4]), cx + 9, Y + 0.03, cz - 6 + i * 1.6); m.castShadow = false; } }
-    { const [cx, cz] = COURTS.tether; mesh(new THREE.CylinderGeometry(0.1, 0.1, 5, 8), toon('#c8c8cc'), cx, Y + 2.5, cz); mesh(new THREE.SphereGeometry(0.45, 12, 10), toon('#f0c040'), cx + 0.8, Y + 3.2, cz); const hex = new THREE.Mesh(new THREE.TorusGeometry(5, 0.15, 4, 6), white); hex.rotation.x = Math.PI / 2; hex.position.set(cx, Y + 0.04, cz); world.add(hex); }
+    // the blacktop: three basketball hoops on the west side with their keys, the long line down the middle, the octagon, the four-square grids
+    for (const [hx, hz] of COURTS.hoops) {
+      mesh(new THREE.CylinderGeometry(0.2, 0.2, 7, 8), toon('#5a5a62'), hx - 1.4, Y + 3.5, hz); mesh(new THREE.BoxGeometry(0.15, 2.4, 3.6), white, hx, Y + 6.4, hz);
+      const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.06, 6, 16), toon('#ff7a2a')); hoop.rotation.x = Math.PI / 2; hoop.position.set(hx + 0.7, Y + 5.6, hz); world.add(hoop);
+      line(hx, hz - 5, hx + 15, hz - 5); line(hx, hz + 5, hx + 15, hz + 5); line(hx + 15, hz - 5, hx + 15, hz + 5);
+      const arc = new THREE.Mesh(new THREE.TorusGeometry(5, 0.15, 4, 24, Math.PI), white); arc.rotation.x = Math.PI / 2; arc.rotation.z = -Math.PI / 2; arc.position.set(hx + 15, Y + 0.04, hz); world.add(arc);
+    }
+    line(COURTS.line[0][0], COURTS.line[0][1], COURTS.line[1][0], COURTS.line[1][1], toon('#2a2a30'), 0.5);
+    { const [cx, cz] = COURTS.octagon, oct = new THREE.Mesh(new THREE.TorusGeometry(10, 0.25, 4, 8), white); oct.rotation.x = Math.PI / 2; oct.position.set(cx, Y + 0.04, cz); world.add(oct); mesh(new THREE.CylinderGeometry(0.1, 0.1, 5, 8), toon('#c8c8cc'), cx, Y + 2.5, cz); mesh(new THREE.SphereGeometry(0.45, 12, 10), toon('#f0c040'), cx + 0.8, Y + 3.2, cz); }
+    { const cols = ['#e04a3a', '#3a7ad8', '#f0c040', '#3ab060']; for (const [cx, cz] of COURTS.four) for (let i = 0; i < 4; i++) flat(new THREE.BoxGeometry(5.6, 0.04, 5.6), toon(cols[(i + Math.round(cx)) % 4]), cx + (i % 2 ? 2.9 : -2.9), Y + 0.03, cz + (i < 2 ? -2.9 : 2.9)); }
     // soccer goals at both ends of the field, and its lines
-    for (const [gx, gz] of GOALS) { const s = gx < 0 ? 1 : -1; for (const b of [-1, 1]) mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.6, 6), white, gx, Y + 1.3, gz + b * 4); const bar = mesh(new THREE.CylinderGeometry(0.12, 0.12, 8, 6), white, gx, Y + 2.6, gz); bar.rotation.x = Math.PI / 2; const net = mesh(new THREE.BoxGeometry(2, 2.6, 8), new THREE.MeshLambertMaterial({ color: '#ffffff', transparent: true, opacity: 0.25 }), gx - s, Y + 1.3, gz); net.castShadow = false; }
-    { const [x0, z0, x1, z1] = ZONES[0][1]; line(x0 + 8, z0 + 6, x1 - 8, z0 + 6); line(x0 + 8, z1 - 6, x1 - 8, z1 - 6); line(x0 + 8, z0 + 6, x0 + 8, z1 - 6); line(x1 - 8, z0 + 6, x1 - 8, z1 - 6); line((x0 + x1) / 2, z0 + 6, (x0 + x1) / 2, z1 - 6);
+    for (const [gx, gz] of GOALS) { const sg = gx < 0 ? 1 : -1; for (const b of [-1, 1]) mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.6, 6), white, gx, Y + 1.3, gz + b * 4); const bar = mesh(new THREE.CylinderGeometry(0.12, 0.12, 8, 6), white, gx, Y + 2.6, gz); bar.rotation.x = Math.PI / 2; const net = mesh(new THREE.BoxGeometry(2, 2.6, 8), new THREE.MeshLambertMaterial({ color: '#ffffff', transparent: true, opacity: 0.25 }), gx - sg, Y + 1.3, gz); net.castShadow = false; }
+    { const [x0, z0, x1, z1] = ZONES[1][1]; line(x0 + 8, z0 + 6, x1 - 8, z0 + 6); line(x0 + 8, z1 - 6, x1 - 8, z1 - 6); line(x0 + 8, z0 + 6, x0 + 8, z1 - 6); line(x1 - 8, z0 + 6, x1 - 8, z1 - 6); line((x0 + x1) / 2, z0 + 6, (x0 + x1) / 2, z1 - 6);
       const c = new THREE.Mesh(new THREE.TorusGeometry(14, 0.18, 4, 40), white); c.rotation.x = Math.PI / 2; c.position.set((x0 + x1) / 2, Y + 0.04, (z0 + z1) / 2); world.add(c); }
-    // parking lines in the front loop
-    { const [x0, z0, x1, z1] = ZONES[3][1]; for (const zz of [z0 + 18, z0 + 42, z1 - 20]) for (let x = x0 + 14; x < x1 - 14; x += 5.5) line(x, zz - 5, x, zz + 5, white, 0.25); }
-    // the road along the top: a yellow centre line
-    { const yl = new THREE.MeshLambertMaterial({ color: '#f0c040' }); for (let x = -620; x < 790; x += 12) { const m = mesh(new THREE.BoxGeometry(6, 0.04, 0.35), yl, x, groundH(x, -518) + 0.05, -518); m.castShadow = false; } }
+    // the front loop: rows of parking stalls round planted islands
+    { const [x0, z0, x1, z1] = ZONES[10][1]; for (const zz of [z0 + 22, z0 + 50, z0 + 82, z1 - 22]) for (let x = x0 + 18; x < x1 - 18; x += 5.5) if (!ISLANDS.some(([a, b]) => Math.hypot(a - x, b - zz) < 9) && paved(x, zz - 5) && paved(x, zz + 5) && paved(x - 30, zz) && paved(x + 30, zz)) line(x, zz - 5, x, zz + 5, white, 0.25);
+      for (const [a, b] of ISLANDS) flat(new THREE.CylinderGeometry(6, 6, 0.4, 16), toon('#6a9a48'), a, Y + 0.2, b); }
+    // parking stalls along the east blacktop's edge
+    { const [x0, z0, x1] = ZONES[4][1]; for (let x = x0 + 10; x < x1 - 6; x += 5.5) line(x, z0 + 2, x, z0 + 12, white, 0.25); }
+    // the amphitheatre: a half ring of seat steps
+    { const [cx, cz] = AMPHI; for (let k = 0; k < 3; k++) { const r = 8 + k * 3, ring = mesh(new THREE.CylinderGeometry(r, r, 0.5 + k * 0.4, 24, 1, true, Math.PI * 0.5, Math.PI), conc, cx, Y + 0.25 + k * 0.2, cz); ring.material = new THREE.MeshLambertMaterial({ color: '#c8c2b4', side: THREE.DoubleSide }); } }
+    // the roads: a yellow centre line on Carmel Mountain Road, crosswalks on the front road
+    { const yl = new THREE.MeshLambertMaterial({ color: '#f0c040' }); for (let x = -620; x < 790; x += 12) line(x - 3, -518, x + 3, -518, yl, 0.35, groundH(x, -518) + 0.05);
+      for (const [cx, cy] of [[260, 704], [278, 734]]) { const [x, z] = px(cx, cy); for (let k = -3; k <= 3; k++) line(x + k * 1.6, z - 4, x + k * 1.6 + 1.2, z + 4, yl, 0.8, groundH(x, z) + 0.05); } }
   }
 
   // ---------------------------------------------------------------- particles and rain

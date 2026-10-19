@@ -22,43 +22,71 @@ const segDist = (x, z, pts) => {
   return best;
 };
 
-// ---------------------------------------------------------------- the campus, from the aerial picture
+// ---------------------------------------------------------------- the campus, traced from the aerial picture
 // map pixels (the picture is about 800 x 830) to the world: 0.8 m a pixel, the campus centred at (0, -230)
 export const MESA = 60;
 export const px = (x, y) => [(x - 400) * 0.8, (y - 430) * 0.8 - 230];
 const R4 = (x0, y0, x1, y1) => { const [a, b] = px(x0, y0), [c, d] = px(x1, y1); return [Math.min(a, c), Math.min(b, d), Math.max(a, c), Math.max(b, d)]; };
-export const CAMPUS = R4(12, 100, 712, 772);
+export const CAMPUS = R4(0, 100, 753, 772);
+const HOUSES_SE = R4(712, 316, 800, 830);                  // the houses that reach into the picture's east edge
 // ground zones painted on the campus (later zones win)
 export const ZONES = [
-  ['field', R4(35, 105, 550, 270)],
-  ['blacktop', R4(45, 278, 322, 592)],
-  ['blacktop', R4(556, 130, 705, 482)],
-  ['asphalt', R4(290, 592, 562, 762)],
-  ['garden', R4(408, 348, 472, 482)],
+  ['lawn', R4(0, 380, 43, 645)],                           // the grassy slope west of the blacktop
+  ['field', R4(30, 107, 556, 272)],
+  ['blacktop', R4(43, 283, 321, 591)],
+  ['asphalt', R4(304, 345, 336, 506)],                     // the service lane beside the west wing
+  ['blacktop', R4(556, 129, 753, 316)],                    // the east blacktop
+  ['asphalt', R4(556, 316, 627, 600)],                     // the drive along the portables
+  ['garden', R4(393, 339, 493, 476)],                      // the courtyard
+  ['lawn', R4(588, 530, 632, 578)],
+  ['asphalt', R4(43, 598, 226, 662)],                      // the drop-off loop in front of the hall
+  ['lawn', R4(69, 626, 195, 654)],                         // ... and its planted median
+  ['asphalt', R4(300, 588, 567, 760), 75],                 // the front parking loop, its corners rounded
 ];
 // buildings: [name, rect, height, roof]
 export const BUILDINGS = [
-  ['north', R4(320, 265, 560, 345), 14, 'flat'],
-  ['westwing', R4(336, 352, 406, 500), 8, 'tile'],
-  ['eastwing', R4(474, 352, 550, 500), 8, 'tile'],
-  ['south', R4(330, 504, 472, 586), 8, 'tile'],
-  ['southeast', R4(478, 500, 540, 560), 7, 'tile'],
-  ['hall', R4(180, 516, 300, 630), 11, 'tile'],
-  ['portable', R4(622, 322, 690, 440), 6, 'flat'],
-  ['portable2', R4(548, 578, 606, 636), 6, 'flat'],
+  ['north', R4(317, 261, 565, 339), 14, 'flat'],           // the two-story building facing the field
+  ['westwing', R4(337, 345, 393, 502), 8, 'flat'],
+  ['eastwing', R4(493, 348, 552, 500), 8, 'flat'],
+  ['front', R4(395, 489, 493, 532), 8, 'flat'],
+  ['southblock', R4(335, 535, 410, 575), 7, 'flat'],
+  ['portable', R4(627, 316, 692, 420), 6, 'flat'],
+  ['southeast', R4(549, 578, 608, 639), 6, 'flat'],
 ];
-export const SHELTER = R4(222, 378, 305, 500);           // the lunch shelter: a roof on posts
-export const PLAY = [px(140, 322), px(548, 215), px(630, 482)].map(([x, z], i) => ({ x, z, big: i === 0 }));
-export const COURTS = { basket: px(128, 405), four: px(192, 470), tether: px(140, 470) };
-export const GOALS = [px(58, 188), px(526, 188)];
+// the angled buildings in the southwest: [name, centre x, centre y, length, width (pixels), angle (degrees), height, roof]
+export const ANGLED = [
+  ['hall', 242, 573, 88, 73, 36, 8, 'flat'],               // the multipurpose hall and its rooms
+  ['hallroof', 256, 585, 56, 46, 36, 12, 'tile'],          // ... its tall brown roof
+  ['diagonal', 352, 531, 129, 32, -34, 8, 'flat'],         // the long wing that runs up to the front building
+];
+export const SHELTER = R4(221, 376, 306, 504);            // the lunch shelter: two roofs on posts
+export const CANOPIES = [[...R4(398, 474, 491, 489), 5], [...R4(279, 523, 313, 557), 6, 'pyramid']];   // the covered walk across the courtyard, the pyramid canopy over the lunch tables
+export const PLAY = [px(145, 322), px(556, 232), px(632, 486)].map(([x, z], i) => ({ x, z, big: i === 0 }));
+export const COURTS = { hoops: [363, 448, 537].map((y) => px(72, y)), line: [px(150, 359), px(150, 440)], octagon: px(139, 474), four: [px(187, 467), px(187, 487), px(210, 487)] };
+export const GOALS = [px(58, 188), px(528, 188)];
+export const AMPHI = px(369, 582);
+export const ISLANDS = [px(445, 621), px(510, 656), px(497, 704), px(365, 647)];
+export const COURT_PATHS = [[px(393, 339), px(493, 476)], [px(493, 339), px(393, 476)], [px(443, 339), px(443, 476)]];
 const inRect = (x, z, r, m = 0) => x > r[0] - m && x < r[2] + m && z > r[1] - m && z < r[3] + m;
-export const zoneAt = (x, z) => { if (!inRect(x, z, CAMPUS)) return null; let k = 'campus'; for (const [t, r] of ZONES) if (inRect(x, z, r)) k = t; for (const b of BUILDINGS) if (inRect(x, z, b[1])) k = 'roof'; return k; };
+const inRRect = (x, z, r, rad) => { if (!inRect(x, z, r)) return false; const cx = Math.max(r[0] + rad, Math.min(x, r[2] - rad)), cz = Math.max(r[1] + rad, Math.min(z, r[3] - rad)); return Math.hypot(x - cx, z - cz) < rad; };
+const ROT = ANGLED.map(([nm, cx, cy, L, Wd, ang, h, roof]) => { const [x, z] = px(cx, cy), a = (ang * Math.PI) / 180; return { nm, x, z, hl: L * 0.4, hw: Wd * 0.4, c: Math.cos(a), s: Math.sin(a), ang: a, h, roof }; });
+export const ANGLED_W = ROT;
+const inRot = (x, z, r, m = 0) => { const dx = x - r.x, dz = z - r.z, u = dx * r.c + dz * r.s, v = -dx * r.s + dz * r.c; return Math.abs(u) < r.hl + m && Math.abs(v) < r.hw + m; };
+export const inCampus = (x, z) => inRect(x, z, CAMPUS) && !inRect(x, z, HOUSES_SE);
+export const zoneAt = (x, z) => {
+  if (!inCampus(x, z)) return null;
+  let k = 'campus'; for (const [t, r, rad] of ZONES) if (rad ? inRRect(x, z, r, rad) : inRect(x, z, r)) k = t;
+  for (const b of BUILDINGS) if (inRect(x, z, b[1])) k = 'roof';
+  for (const r of ROT) if (inRot(x, z, r)) k = 'roof';
+  return k;
+};
+export const inBuilding = (x, z, m = 0) => BUILDINGS.some((b) => inRect(x, z, b[1], m)) || ROT.some((r) => inRot(x, z, r, m)) || inRect(x, z, SHELTER, m);
 
 // ---------------------------------------------------------------- landmarks
 export const SPOT = {
   plateau: { x: -20, z: -230, r: 300, h: MESA },
   start: (() => { const [x, z] = px(300, 190); return { x, z }; })(),
-  hermit: (() => { const [x, z] = px(440, 418); return { x, z }; })(),
+  hermit: (() => { const [x, z] = px(468, 452); return { x, z }; })(),
   castle: { x: 380, z: -690 }, village: { x: 470, z: -110 }, grove: { x: -380, z: 200 }, volcano: null,
 };
 const CANYON = [[-820, -400], [-640, -360], [-520, -300], [-440, -190], [-405, -40], [-370, 110], [-260, 240], [-90, 300], [120, 345], [330, 420], [560, 460], [820, 470]];
@@ -74,7 +102,7 @@ export const REGIONS = [
   { id: 'neighborhood', name: ['峽谷社區', 'Canyon Neighborhood'], x: 480, z: -80 },
 ];
 export function regionAt(x, z) {
-  if (inRect(x, z, CAMPUS)) return 'plateau';
+  if (inCampus(x, z)) return 'plateau';
   if (dist(x, z, PEAK.x, PEAK.z) < 280) return 'mountain';
   if (x < -560 && canyonDist(x, z) > 90) return 'beach';
   if (canyonDist(x, z) < 110) return x < -150 ? 'canyon' : 'creek';
@@ -85,12 +113,12 @@ export function regionAt(x, z) {
 // streets: Carmel Mountain Road in the north, the road past the front of the school, and the neighborhood's streets
 export const ROADS = [
   [[-640, -518], [800, -518]],
-  [[-330, -58], [-150, 0], [96, 90], [300, 140], [560, 150], [740, 140]],
-  [[480, -512], [480, 360]], [[300, -512], [300, 140]], [[660, -512], [660, 380]],
+  [px(0, 655), px(150, 668), px(260, 700), px(330, 730), px(420, 770), px(520, 820), [180, 120], [330, 140], [560, 150], [740, 140]],
+  [[480, -512], [480, 360]], [[330, -512], [330, 140]], [[660, -512], [660, 380]],
   ...[-400, -300, -200, -100, 0].map((z) => [[262, z], [740, z]]),
   [[-300, 150], [250, 150]],
 ];
-const roadW = (i) => (i === 0 ? 9 : 6);
+const roadW = (i) => (i === 0 ? 14 : 6);
 function roadDist(x, z) { let b = 1e9; ROADS.forEach((r, i) => { b = Math.min(b, segDist(x, z, r) - (roadW(i) - 6)); }); return b; }
 export const paved = (x, z) => { const k = zoneAt(x, z); return (k && k !== 'field' && k !== 'garden') || roadDist(x, z) < 6; };
 
@@ -146,7 +174,7 @@ export function colorAt(x, z, h, slope) {
     if (zone === 'asphalt') return mixc(COL.asphalt, COL.blacktop, n * 0.3);
     if (zone === 'garden') return mixc(COL.garden, COL.lawn, n);
     if (zone === 'roof') return COL.concrete;
-    return mixc(COL.concrete, COL.lawn, n > 0.62 ? 0.7 : 0.05);                                                     // walkways with patches of lawn
+    return mixc(COL.concrete, COL.lawn, n > 0.8 ? 0.6 : 0.03);                                                      // walkways, a planter here and there
   }
   let c;
   if (reg === 'neighborhood') c = mixc(COL.lawn, COL.lawn2, n);
@@ -169,7 +197,7 @@ export function landNear(x, z, maxSlope = 22, minH = 3) {
   }
   return [x, z];
 }
-const hitsBuilding = (x, z, m) => BUILDINGS.some((b) => inRect(x, z, b[1], m)) || inRect(x, z, SHELTER, m);
+const hitsBuilding = (x, z, m) => inBuilding(x, z, m);
 const okLand = (x, z, maxSlope = 24) => { const h = groundH(x, z); return h > 1.5 && slopeDeg(x, z) < maxSlope && Math.abs(x) < 700 && Math.abs(z) < 700 && !paved(x, z) && !hitsBuilding(x, z, 8); };
 const pt = (o, x, z) => ({ ...o, x, z, y: groundH(x, z) });
 
@@ -185,10 +213,11 @@ export const VILLAGE = { x: SPOT.village.x, z: SPOT.village.z, y: groundH(SPOT.v
 const HOUSE_COLS = ['#f0e4cc', '#e8d8b8', '#f4ece0', '#e0d0b4', '#ece0c8', '#f2e2d0'];
 {
   const spots = [];
-  for (const z0 of [-450, -350, -250, -150, -50, 50]) for (const side of [-1, 1]) for (let x = 282; x < 720; x += 30) spots.push([x, z0 + side * 22 + 25]);
-  for (const side of [-1, 1]) for (let x = -280; x < 250; x += 30) spots.push([x, 150 + side * 22]);
+  for (let z = -440; z < 90; z += 26) spots.push([298, z]);
+  for (const z0 of [-450, -350, -250, -150, -50, 50]) for (const side of [-1, 1]) for (let x = 360; x < 720; x += 30) spots.push([x, z0 + side * 22 + 25]);
+  for (const z of [40, 75, 120, 165, 205]) for (let x = -300; x < 280; x += 30) spots.push([x + (z % 2 ? 15 : 0), z]);
   for (const [x, z] of spots) {
-    if (canyonDist(x, z) < 95 || roadDist(x, z) < 12 || inRect(x, z, CAMPUS, 10) || dist(x, z, VILLAGE.x, VILLAGE.z) < 70 || Math.abs(x - 480) < 12 || Math.abs(x - 300) < 12 || Math.abs(x - 660) < 12) continue;
+    if (canyonDist(x, z) < 95 || roadDist(x, z) < 12 || (inCampus(x, z) || inCampus(x - 9, z) || inCampus(x, z - 8)) || dist(x, z, VILLAGE.x, VILLAGE.z) < 70 || Math.abs(x - 480) < 12 || Math.abs(x - 330) < 12 || Math.abs(x - 660) < 12) continue;
     const y = groundH(x, z); if (y < 40 || slopeDeg(x, z) > 10) continue;
     POI.houses.push({ x, z, y, w: 14 + hash2(x | 0, z | 0) * 4, d: 12, h: 6 + (hash2(z | 0, x | 0) < 0.3 ? 4 : 0), role: 'house', col: HOUSE_COLS[Math.floor(hash2(x | 0, z | 0, 3) * HOUSE_COLS.length)] });
     keepOut.push([x, z, 13]);
@@ -294,12 +323,19 @@ for (const n of POI.npcs) n.y = groundH(n.x, n.z);
 
 // ---------------------------------------------------------------- trees and rocks
 export const TREES = [], ROCKS = [];
-const tree = (x, z, type, s, apple = false) => TREES.push({ x, z, y: groundH(x, z), type, s, rot: hash2(x | 0, z | 0, 6) * 6.28, apple, planter: true });
-// the school's trees, from the picture: rows along Carmel Mountain Road, the west and east edges, the courtyard, the front lot
-for (let x = 0; x <= 795; x += 24) { const [a, b] = px(x, 42); tree(a, b, 'pine', 1.1 + hash2(x, 1) * 0.4); const [c, d] = px(x + 12, 92); tree(c, d, 'oak', 0.9 + hash2(x, 2) * 0.3); }
-for (let y = 280; y <= 600; y += 28) { const [a, b] = px(18, y); tree(a, b, 'oak', 1.0 + hash2(y, 3) * 0.3); }
-for (let y = 140; y <= 760; y += 30) { const [a, b] = px(712, y); tree(a, b, y % 60 ? 'oak' : 'pine', 1.0 + hash2(y, 4) * 0.3); }
-for (const [x, y, s] of [[425, 378, 0.8], [458, 452, 0.75], [418, 456, 0.7], [462, 372, 0.7], [482, 232, 1.2], [28, 214, 1.1], [442, 622, 0.8], [492, 702, 0.85], [380, 645, 0.8], [330, 610, 0.9], [168, 600, 0.9], [560, 300, 0.8]]) { const [a, b] = px(x, y); tree(a, b, 'oak', s, x === 425); }
+const tree = (x, z, type, s, apple = false) => TREES.push({ x, z, y: groundH(x, z), type, s: s * 1.8, rot: hash2(x | 0, z | 0, 6) * 6.28, apple, planter: true });
+// the school's trees, from the picture: the rows along Carmel Mountain Road, the trees between the field and the blacktop,
+// the slope west of the blacktop, the courtyard, the east edge, around the hall, the front lot's islands and the road
+for (let x = 0; x <= 795; x += 20) { const [a, b] = px(x, 30); tree(a, b, 'pine', 1.5 + hash2(x, 1) * 0.5); const [c, d] = px(x + 10, 98); tree(c, d, 'oak', 1.2 + hash2(x, 2) * 0.4); }
+for (let y = 280; y <= 640; y += 18) { const [a, b] = px(14 + (y % 3) * 8, y); tree(a, b, 'oak', 1.3 + hash2(y, 3) * 0.5); }
+for (let y = 110; y <= 270; y += 26) { const [a, b] = px(14, y); tree(a, b, 'oak', 1.3 + hash2(y, 9) * 0.4); }
+for (let y = 120; y <= 340; y += 16) { const [a, b] = px(770, y); tree(a, b, 'oak', 1.3 + hash2(y, 4) * 0.5); }
+for (let y = 420; y <= 720; y += 16) { const [a, b] = px(645 + (y % 3) * 8, y); tree(a, b, y % 48 ? 'oak' : 'pine', 1.2 + hash2(y, 5) * 0.5); }
+for (let x = 300; x <= 560; x += 14) { const [a, b] = px(x, 768 + (x - 300) * 0.12); tree(a, b, 'oak', 0.7 + hash2(x, 6) * 0.3); }
+for (let x = 60; x <= 220; x += 30) { const [a, b] = px(x, 672); tree(a, b, 'pine', 1.0); }
+for (const [x, y, sz] of [[115, 283, 0.75], [135, 283, 0.75], [156, 283, 0.75], [180, 283, 0.75], [482, 233, 1.2], [25, 210, 1.1], [38, 245, 1.0],
+  [393, 358, 0.7], [491, 358, 0.7], [443, 363, 0.8], [426, 428, 0.6], [463, 424, 0.6], [430, 454, 0.55], [452, 454, 0.55],
+  [169, 567, 1.3], [192, 596, 1.3], [322, 581, 1.2], [400, 578, 1.2], [445, 621, 1.1], [510, 656, 1.0], [497, 704, 1.1], [365, 647, 1.0], [600, 545, 1.3], [470, 240, 1.0], [300, 600, 1.2], [575, 640, 1.2], [560, 300, 1.1]]) { const [a, b] = px(x, y); tree(a, b, 'oak', sz, x === 443); }
 {
   const cell = 8, nC2 = W.size / cell;
   for (let j = 0; j < nC2; j++) for (let i = 0; i < nC2; i++) {
@@ -334,6 +370,19 @@ for (const t of POI.towers) {
 }
 // the school buildings, the lunch shelter's roof and posts, the play structures (decks to climb, a slide)
 for (const [nm, r, hgt] of BUILDINGS) box(r[0], MESA - 2, r[1], r[2], MESA + hgt, r[3], { building: nm });
+for (const r of ROT) {                       // an angled block, filled with 1.6 m slices along z that follow its outline
+  const cs = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => [r.x + a * r.hl * r.c - b * r.hw * r.s, r.z + a * r.hl * r.s + b * r.hw * r.c]);
+  const z0 = Math.min(...cs.map((q) => q[1])), z1 = Math.max(...cs.map((q) => q[1]));
+  for (let z = z0; z < z1; z += 1.6) {
+    const zm = z + 0.8, xs = [];
+    for (let k = 0; k < 4; k++) { const [ax, az] = cs[k], [bx, bz] = cs[(k + 1) % 4]; if ((az - zm) * (bz - zm) <= 0 && az !== bz) xs.push(ax + ((zm - az) / (bz - az)) * (bx - ax)); }
+    if (xs.length >= 2) box(Math.min(...xs), MESA - 2, z, Math.max(...xs), MESA + r.h, z + 1.6, { building: r.nm });
+  }
+}
+for (const [x0, z0, x1, z1, top, kind] of CANOPIES) {
+  box(x0, MESA + top, z0, x1, MESA + top + 0.4, z1, { canopy: 1 });
+  for (const [x, z] of kind ? [[x0 + 1, z0 + 1], [x1 - 1, z0 + 1], [x0 + 1, z1 - 1], [x1 - 1, z1 - 1]] : [[x0 + 2, (z0 + z1) / 2], [x1 - 2, (z0 + z1) / 2], [(x0 + x1) / 2, (z0 + z1) / 2]]) box(x - 0.25, MESA - 1, z - 0.25, x + 0.25, MESA + top, z + 0.25);
+}
 {
   const [x0, z0, x1, z1] = SHELTER, top = MESA + 6;
   box(x0, top, z0, x1, top + 0.5, z1, { shelter: 1 });
