@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a1420">
+<title>鼠尾草峽谷大冒險 · Sage Canyon Quest</title>
+<meta name="description" content="以 Sage Canyon 小學為舞台的開放世界冒險：攀爬、滑翔、神殿解謎、料理，從校園出發，穿過峽谷，登上黑山。An open-world adventure that starts at Sage Canyon School: climb, glide, solve shrines and save the canyon.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Cinzel:wght@600&display=swap">
+<link rel="stylesheet" href="style.css?v=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 12 L8 3 L14 12 L8 9 Z' fill='%23e8dcc0' stroke='%23c83a3a'/%3E%3C/svg%3E">
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="hud" class="hidden">
+  <div id="tl"><div id="hearts"></div><div id="objective"></div></div>
+  <div id="tr"><div id="gear"></div><div id="clock"></div></div>
+  <canvas id="mini" width="180" height="180"></canvas>
+  <canvas id="stam" width="64" height="64"></canvas>
+  <div id="reticle"></div>
+  <div id="prompt"></div>
+  <div id="toasts"></div>
+  <div id="banner"></div>
+  <div id="bossbar"><b></b><i><i></i></i></div>
+  <div id="hints"></div>
+  <div id="target"><div class="mark"></div><div class="hp"><i></i></div></div>
+  <div id="quick"></div>
+  <div id="tip"></div>
+  <div id="arrows"></div>
+</div>
+<div id="hurt"></div><div id="lowhp"></div>
+<div id="touchui">
+  <div id="stick"><div id="knob"></div></div>
+  <div class="tb top"><button data-t="map">🗺</button><button data-t="menu">☰</button></div>
+  <div class="tb pad">
+    <button data-t="act" id="t-act" class="act"><b>✋</b></button>
+    <button data-t="gift" class="gift"><b>✦</b></button>
+    <button data-t="rune" class="rune"><b>◆</b></button><button data-t="cycleRune" class="small">⟳</button>
+    <button data-t="shield"><b>🛡</b></button><button data-t="bow"><b>🏹</b></button><button data-t="nextW" class="small">⇄</button>
+    <button data-t="sprint"><b>💨</b></button><button data-t="attack" class="big"><b>⚔</b></button><button data-t="jump" class="big"><b>⤒</b></button>
+  </div>
+</div>
+<div id="dialog" class="hidden"></div>
+<div id="menu" class="hidden"></div>
+<div id="title" class="hidden"></div>
+<div id="ending" class="hidden"></div>
+<div id="lockhint">🖱 <span></span></div>
+<div id="fade"></div>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
+<script type="module" src="js/main.js?v=1"></script>
+<script src="/hub.js" data-pos="top-left" defer></script>
+</body>
+</html>
