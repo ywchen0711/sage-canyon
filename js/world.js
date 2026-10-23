@@ -163,8 +163,8 @@ export const isCold = () => false;
 // ---------------------------------------------------------------- colours (vertex colours and the map)
 const C = (h) => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
 const mixc = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
-const COL = { lawn: C('#78aa48'), lawn2: C('#5f9640'), field: C('#6cb23a'), field2: C('#5ea232'), blacktop: C('#4c5058'), asphalt: C('#5c5e64'), concrete: C('#b4b0a6'), roof: C('#9a968c'),
-  garden: C('#5e9a3e'), sage: C('#8a965a'), sage2: C('#a8a274'), sand: C('#e2cf98'), wet: C('#7a7458'), rock: C('#b89a74'), rock2: C('#8c8070'), chap: C('#6e7e48'), dry: C('#bfae6c'), road: C('#55575d') };
+const COL = { lawn: C('#7c8c44'), lawn2: C('#6a7a38'), field: C('#86963e'), field2: C('#748434'), blacktop: C('#5a5450'), asphalt: C('#6a6460'), concrete: C('#c4b494'), roof: C('#a89a80'),
+  garden: C('#647a38'), sage: C('#8e9450'), sage2: C('#a8a068'), sand: C('#d8bf84'), wet: C('#7a6e50'), rock: C('#b4946a'), rock2: C('#8e8270'), chap: C('#6e7a3e'), dry: C('#c4ac6c'), road: C('#9a7a52') };
 export function colorAt(x, z, h, slope) {
   if (h < -0.6) return mixc(COL.wet, [0.25, 0.32, 0.36], clamp(-h / 20, 0, 0.7));
   const reg = regionAt(x, z), n = nE(x / 40, z / 40) * 0.5 + 0.5, zone = zoneAt(x, z);

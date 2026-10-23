@@ -361,7 +361,7 @@ export function createEntities(gfx, game) {
     }
     for (const p of pickups) { p.g.rotation.y += dt * 1.5; p.g.position.y = p.y + 0.25 + Math.sin(performance.now() / 400 + p.x) * 0.06; }
     const pl = P();
-    for (const n of npcs) { const d = Math.hypot(n.x - pl.x, n.z - pl.z); if (d < 8 && n.look !== 'statue') n.m.rotation.y = Math.atan2(pl.x - n.x, pl.z - n.z); const P2 = n.m.userData.P; if (P2 && P2.hips) P2.hips.position.y = 0.85 + Math.sin(performance.now() / 600 + n.x) * 0.01; }
+    for (const n of npcs) { const d = Math.hypot(n.x - pl.x, n.z - pl.z); if (d < 8 && n.look !== 'statue') n.m.rotation.y = Math.atan2(pl.x - n.x, pl.z - n.z); const P2 = n.m.userData.P; if (P2 && P2.hips) P2.hips.position.y = (P2.legL ? 0.85 * 0.82 : 0.85) + Math.sin(performance.now() / 600 + n.x) * 0.01; }
   }
   function clearShrine() { for (const e of [...enemies]) if (e.inShrine) remove(e); for (const pr of [...props]) removeProp(pr); for (const p of [...pickups]) if (p.inShrine) takePickup(p); }
   function clearAll() { for (const e of [...enemies]) remove(e); for (const pr of [...props]) removeProp(pr); for (const p of [...pickups]) takePickup(p); for (const a of arrows) scene.remove(a.g); arrows.length = 0; for (const o of orbs) scene.remove(o.m); orbs.length = 0; }

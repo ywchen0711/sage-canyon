@@ -7,13 +7,16 @@ import { WEAPONS, BOWS, SHIELDS, OUTFITS } from './items.js';
 // ---------------------------------------------------------------- materials
 const grad = (() => { const d = new Uint8Array([70, 150, 210, 255]); const t = new THREE.DataTexture(d, 4, 1, THREE.RedFormat); t.minFilter = t.magFilter = THREE.NearestFilter; t.needsUpdate = true; return t; })();
 const mats = new Map();
+// chibi proportions: a big head and short legs (the hips sit lower so the feet still touch the ground)
+const HIP = 0.76, LEG = 0.82;
+function chibi(P, head) { P.headP.scale.setScalar(head); for (const k of ['legL', 'legR']) if (P[k]) P[k].scale.y = LEG; P.hips.position.y -= (P.hips.position.y) * (1 - LEG); }
 export function toon(col, o = {}) {
   const k = col + JSON.stringify(o); let m = mats.get(k);
   if (!m) { m = new THREE.MeshToonMaterial({ color: col, gradientMap: grad, ...o }); mats.set(k, m); }
   return m;
 }
 export const glowMat = (col, i = 2) => toon(col, { emissive: col, emissiveIntensity: i });
-const OUT = new THREE.MeshBasicMaterial({ color: '#141018', side: THREE.BackSide });
+const OUT = new THREE.MeshBasicMaterial({ color: '#2e1e12', side: THREE.BackSide });
 // a dark rim around a model: each part again, a little bigger, drawn inside out
 export function outline(g, w = 0.045) {
   const add = [];
@@ -76,7 +79,7 @@ export function makeHero() {
   const root = new THREE.Group(), body = pivot(root, 0, 0, 0);
   const skin = toon('#f2cba4'), hair = toon('#1c1c24'), hairD = toon('#0c0c12'), P = {};
   const cap = (r, l) => G(`cap${r},${l}`, () => new THREE.CapsuleGeometry(r, l, 4, 10));
-  P.hips = pivot(body, 0, 0.92, 0);
+  P.hips = pivot(body, 0, HIP, 0);
   // the tunic: a capsule chest with a flared skirt and a belt with a buckle
   P.torso = M(cap(0.2, 0.28), toon('#3a6ab0'), 0, 0.3, 0, P.hips); P.torso.scale.set(1.05, 1, 0.78);
   P.skirt = M(G('skirt', () => new THREE.CylinderGeometry(0.22, 0.31, 0.3, 12, 1, true)), toon('#3a6ab0', { side: THREE.DoubleSide }), 0, 0.02, 0, P.hips);
@@ -118,6 +121,7 @@ export function makeHero() {
     M(box(0.15, 0.09, 0.25), toon('#f2f2f2'), 0, -0.82, 0.04, l); M(box(0.155, 0.03, 0.255), toon('#3a7ad8'), 0, -0.79, 0.04, l);
   }
   P.back = pivot(P.hips, 0, 0.32, -0.17);
+  P.headP.scale.setScalar(1.45); for (const k of ['legL', 'legR']) P[k].scale.y = LEG;
   P.glider = gliderMesh(); P.glider.position.set(0, 2.1, 0); P.glider.visible = false; body.add(P.glider);
   outline(root, 0.035);
   root.userData.P = P; root.userData.body = body;
@@ -142,14 +146,14 @@ export function poseHero(hero, s) {
   const P = hero.userData.P, body = hero.userData.body, t = s.t;
   const set = (o, x = 0, y = 0, z = 0) => o.rotation.set(x, y, z);
   for (const k of ['hips', 'armL', 'armR', 'legL', 'legR', 'armLf', 'armRf', 'headP', 'armRh']) set(P[k]);
-  P.hips.position.set(0, 0.92, 0); body.rotation.set(0, 0, 0); body.position.set(0, 0, 0); P.glider.visible = false;
+  P.hips.position.set(0, HIP, 0); body.rotation.set(0, 0, 0); body.position.set(0, 0, 0); P.glider.visible = false;
   if (s.dead) { body.rotation.x = -1.5; body.position.y = 0.25; return; }
   const sp = s.speed;
   if (s.mode === 'ground') {
     const f = sp > 6 ? 13 : sp > 3 ? 10 : 7, a = Math.min(1, sp / 5) * (sp > 6 ? 0.95 : 0.7), ph = t * f;
     set(P.legL, Math.sin(ph) * a); set(P.legR, -Math.sin(ph) * a);
     set(P.armL, -Math.sin(ph) * a * 0.8); set(P.armR, Math.sin(ph) * a * 0.8); set(P.armLf, -0.3 * a); set(P.armRf, -0.3 * a);
-    P.hips.position.y = 0.92 + Math.abs(Math.sin(ph)) * 0.05 * a + (sp < 0.2 ? Math.sin(t * 2) * 0.008 : 0);
+    P.hips.position.y = HIP + Math.abs(Math.sin(ph)) * 0.05 * a + (sp < 0.2 ? Math.sin(t * 2) * 0.008 : 0);
     if (sp > 6) P.hips.rotation.x = 0.25;
     if (s.land > 0 && sp < 3) { const k = s.land / 0.25; P.hips.position.y -= k * 0.12; P.legL.rotation.x -= 0.5 * k; P.legR.rotation.x -= 0.5 * k; }
   } else if (s.mode === 'air') {
@@ -289,6 +293,7 @@ export function makeNPC(look) {
   for (const [nm, s] of [['armL', 1], ['armR', -1]]) { P[nm] = pivot(P.hips, s * 0.27, 0.45, 0); M(box(0.11, 0.55, 0.11), toon(C[0]), 0, -0.27, 0, P[nm]); }
   if (!robe) for (const [nm, s] of [['legL', 1], ['legR', -1]]) { P[nm] = pivot(P.hips, s * 0.1, 0, 0); M(box(0.14, 0.85, 0.15), toon(C[1]), 0, -0.42, 0, P[nm]); }
   if (look === 'monk') root.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.75; o.material.emissive = new THREE.Color('#40a8ff'); o.material.emissiveIntensity = 0.6; } });
+  if (P.legL) chibi(P, 1.4); else if (P.headP) P.headP.scale.setScalar(1.4);
   if (look === 'kid' || look === 'jasper') root.scale.setScalar(0.72);
   if (look === 'dad') { for (const sx of [-1, 1]) M(G('lens', () => new THREE.TorusGeometry(0.045, 0.01, 4, 12)), toon('#1a1a1a'), sx * 0.075, 0.12, 0.2, P.headP); }
   outline(root, 0.035); root.userData.P = P; root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
